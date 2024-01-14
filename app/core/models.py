@@ -52,3 +52,22 @@ class User(AbstractBaseUser, PermissionsMixin):
     def __str__(self):
         """Returns the user string representation."""
         return self.email
+
+
+class Product(models.Model):
+    """Product object."""
+    name = models.CharField(max_length=255)
+    price = models.DecimalField(max_digits=5, decimal_places=2)
+    description = models.TextField(blank=True)
+    tipos = models.ManyToManyField('Product_type')
+
+    def __str__(self):
+        return self.name
+
+
+class Product_type(models.Model):
+    """Product type object."""
+    name = models.CharField(max_length=255)
+
+    def __str__(self):
+        return self.name

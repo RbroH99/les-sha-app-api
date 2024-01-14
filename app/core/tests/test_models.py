@@ -4,6 +4,15 @@ Tests for models.
 from django.test import TestCase
 from django.contrib.auth import get_user_model
 
+from decimal import Decimal
+
+from core import models
+
+
+def create_user(email='user@example.com', password='testpass123'):
+    """Create and return a new user."""
+    return get_user_model().objects.create_user(email, password)
+
 
 class ModelTests(TestCase):
     """Test models."""
@@ -46,3 +55,19 @@ class ModelTests(TestCase):
 
         self.assertTrue(user.is_superuser)
         self.assertTrue(user.is_staff)
+
+    def test_create_product(self):
+        """Test creating a product is succesful."""
+        product = models.Product.objects.create(
+            name='Sample product name',
+            price=Decimal('350'),
+            description='Saple description',
+        )
+
+        self.assertEqual(str(product), product.name)
+
+    def test_create_product_type(self):
+        """Test creating a product type is successful."""
+        product_type = models.Product_type.objects.create(name='Type1')
+
+        self.assertEqual(str(product_type), product_type.name)

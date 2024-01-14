@@ -1,0 +1,214 @@
+"""
+Tests for product API.
+"""
+from decimal import Decimal
+
+from django.contrib.auth import get_user_model
+from django.test import TestCase
+from django.urls import reverse
+
+from rest_framework import status
+from rest_framework.test import APIClient
+
+from core.models import (
+    Product,
+)
+
+from product.serializers import (
+    ProductSerializer,
+    ProductDetailSerializer,
+)
+
+
+PRODUCTS_URL = reverse('product:product-list')
+
+
+def detail_url(product_id):
+    """Create and return a product detail URL."""
+    return reverse('product:product-detail', args=[product_id])
+
+
+def create_product(**params):
+    """Create and return a sample product."""
+    defaults = {
+        'name': 'Sample product name',
+        'price': Decimal('350'),
+        'description': 'Sample description'
+    }
+    defaults.update(params)
+
+    product = Product.objects.create(**defaults)
+    return product
+
+
+def create_staff_client(email):
+    """Create and return superuser and staff_client."""
+    staff_client = APIClient()
+    superuser = get_user_model().objects.create_superuser(
+            email=email,
+            password='pass123',
+        )
+    staff_client.force_authenticate(superuser)
+
+    return (superuser, staff_client)
+
+
+class PublicProductAPITests(TestCase):
+    """Test unauthenticated API requests."""
+
+    def setUp(self):
+        self.client = APIClient()
+        self.superuser, self.staff_client \
+            = create_staff_client('superuser1@example.com')
+
+    def test_retrieve_products(self):
+        """Test retrieving the products."""
+        create_product(name='Product1')
+        create_product(name='Product2')
+
+        res = self.client.get(PRODUCTS_URL)
+
+        products = Product.objects.all().order_by('id')
+        serializer = ProductSerializer(products, many=True)
+        self.assertEqual(res.status_code, status.HTTP_200_OK)
+        self.assertEqual(res.data, serializer.data)
+
+    def test_create_product_error(self):
+        """Test unauthenticated users can't create products."""
+        res = self.client.post(PRODUCTS_URL, {
+            'name': 'Test Product',
+            'price': Decimal('350'),
+            'description': 'Test Description'
+        })
+
+        self.assertEqual(res.status_code, status.HTTP_401_UNAUTHORIZED)
+
+
+class PrivateProductsAPITests(TestCase):
+    """Test authenticathed API requests."""
+
+    def setUp(self):
+        self.client = APIClient()
+        self.user = get_user_model().objects.create_user(
+            'test@example.com',
+            'testpass123',
+        )
+        self.client.force_authenticate(self.user)
+        self.superuser, self.staff_client \
+            = create_staff_client('superuser2@example.com')
+
+    # ####_NON-STAFF USERS TESTS_#### #
+
+    def test_non_staff_create_product(self):
+        """Test a non-staff client can't create a product."""
+        res = self.client.post(PRODUCTS_URL, {
+            'name': 'Test Product',
+            'price': Decimal('350'),
+            'description': 'Test Description'
+        })
+
+        self.assertEqual(res.status_code, status.HTTP_403_FORBIDDEN)
+
+    def test_get_product_detail(self):
+        """Test create Product detail."""
+        product = create_product(name='Test Product')
+
+        url = detail_url(product.id)
+        res = self.client.get(url)
+
+        serializer = ProductDetailSerializer(product)
+        self.assertEqual(res.data, serializer.data)
+
+    def test_non_staff_update_product(self):
+        """Test non-staff users can't update a product."""
+        product = create_product(name='Test Product')
+
+        url = detail_url(product.id)
+
+        # full update
+        res = self.client.put(url, {'name': 'New Name'}, format='json')
+        self.assertEqual(res.status_code, status.HTTP_403_FORBIDDEN)
+
+        # partial update
+        res = self.client.patch(url, {'name': 'New Name'}, format='json')
+        self.assertEqual(res.status_code, status.HTTP_403_FORBIDDEN)
+
+    def test_non_staff_delete_product_error(self):
+        """Test non-staff users attempt delete product returns error."""
+        product = create_product(name='Test Name')
+
+        url = detail_url(product.id)
+        res = self.client.delete(url)
+
+        self.assertEqual(res.status_code, status.HTTP_403_FORBIDDEN)
+        res = self.client.get(url)
+        self.assertEqual(res.status_code, status.HTTP_200_OK)
+
+    # ####_STAFF USERS TESTS_#### #
+
+    def test_staff_create_product(self):
+        """Test staffcan create product."""
+        payload = {
+            'name': 'Test Product',
+            'price': Decimal('350'),
+            'description': 'Test Description'
+        }
+        res = self.staff_client.post(PRODUCTS_URL, payload)
+
+        self.assertEqual(res.status_code, status.HTTP_201_CREATED)
+        product = Product.objects.get(id=res.data['id'])
+        for k, v in payload.items():
+            self.assertEqual(getattr(product, k), v)
+
+    def test_staff_partial_update_product(self):
+        """Test a staff user can make partial update product."""
+        product = create_product(
+            name='Test Name',
+            price=Decimal('200'),
+            description='Test product description.'
+        )
+        payload = {
+            'name': 'Test Product'
+        }
+
+        url = detail_url(product.id)
+        res = self.staff_client.patch(url, payload, format='json')
+
+        self.assertEqual(res.status_code, status.HTTP_200_OK)
+        updated_product = Product.objects.get(id=res.data['id'])
+        self.assertEqual(updated_product.name, payload['name'])
+        self.assertEqual(updated_product.price, product.price)
+        self.assertEqual(updated_product.description, product.description)
+
+    def test_staff_full_update_product(self):
+        """Test a staff user can make partial update product."""
+        product = create_product(
+            name='Test Name',
+            price=Decimal('200'),
+            description='Test product description.'
+        )
+        payload = {
+            'name': 'Test Product',
+            'price': Decimal('350'),
+            'description': 'New test Description'
+        }
+
+        url = detail_url(product.id)
+        res = self.staff_client.patch(url, payload, format='json')
+
+        self.assertEqual(res.status_code, status.HTTP_200_OK)
+        product = Product.objects.get(id=res.data['id'])
+        for k, v in payload.items():
+            self.assertEqual(getattr(product, k), v)
+
+    def test_staff_delete_product(self):
+        """Test staff delete a product is successful."""
+        product = create_product(name='Test Name')
+
+        url = detail_url(product.id)
+        res = self.staff_client.delete(url)
+
+        self.assertEqual(res.status_code, status.HTTP_204_NO_CONTENT)
+
+        res = self.staff_client.get(url)
+        self.assertEqual(res.status_code, status.HTTP_404_NOT_FOUND)

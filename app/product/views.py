@@ -1,6 +1,7 @@
 """
 Views for the Product API.
 """
+from rest_framework.permissions import IsAuthenticatedOrReadOnly
 from rest_framework.response import Response
 from rest_framework import (
     viewsets,
@@ -10,6 +11,7 @@ from rest_framework import (
 from core.models import (
     Product,
     Product_type,
+    Rating,
 )
 from product import serializers
 
@@ -44,3 +46,13 @@ class Product_typeViewSet(mixins.ListModelMixin,
         instance = self.get_object()
         serializer = self.get_serializer(instance)
         return Response(serializer.data)
+
+
+class RatingViewSet(mixins.ListModelMixin,
+                    mixins.CreateModelMixin,
+                    mixins.UpdateModelMixin,
+                    viewsets.GenericViewSet):
+    """Manage Ratings in the database."""
+    serializer_class = serializers.RatingSerializer
+    queryset = Rating.objects.all()
+    permission_classes = [IsAuthenticatedOrReadOnly]

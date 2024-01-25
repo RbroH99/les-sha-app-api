@@ -1,11 +1,16 @@
 """
 Database models.
 """
+from django.conf import settings
 from django.db import models
 from django.contrib.auth.models import (
     AbstractBaseUser,
     PermissionsMixin,
     BaseUserManager,
+)
+from django.core.validators import (
+    MinValueValidator,
+    MaxValueValidator
 )
 
 from phonenumber_field.modelfields import PhoneNumberField
@@ -59,10 +64,15 @@ class Product(models.Model):
     name = models.CharField(max_length=255)
     price = models.DecimalField(max_digits=5, decimal_places=2)
     description = models.TextField(blank=True)
-    tipos = models.ManyToManyField('Product_type')
+    types = models.ManyToManyField('Product_type', blank=True)
 
     def __str__(self):
         return self.name
+
+    @property
+    def rating(self):
+        """Calculate average of product rating."""
+        return self.rating_set.aggregate(models.Avg('value'))['value__avg']
 
 
 class Product_type(models.Model):
@@ -71,3 +81,26 @@ class Product_type(models.Model):
 
     def __str__(self):
         return self.name
+
+
+class Rating(models.Model):
+    """Products rating object."""
+    user = models.ForeignKey(
+        settings.AUTH_USER_MODEL,
+        on_delete=models.CASCADE,
+    )
+    product = models.ForeignKey(Product, on_delete=models.CASCADE)
+    value = models.PositiveSmallIntegerField(blank=False,
+                                             null=False,
+                                             validators=[MinValueValidator(1),
+                                                         MaxValueValidator(5)])
+
+    class Meta:
+        constraints = [
+            models.UniqueConstraint(fields=['user', 'product'],
+                                    name='unique_rating'),
+        ]
+
+    def __str__(self):
+        """Return rating string representation."""
+        return f'{self.product.name}>{self.user.name}>{self.value}'

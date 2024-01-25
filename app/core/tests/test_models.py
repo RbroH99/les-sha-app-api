@@ -71,3 +71,12 @@ class ModelTests(TestCase):
         product_type = models.Product_type.objects.create(name='Type1')
 
         self.assertEqual(str(product_type), product_type.name)
+
+    def test_create_rating(self):
+        """Test creating a rating is successfull."""
+        user = create_user()
+        product = models.Product.objects.create(name='Test Product',
+                                                price=Decimal('350'))
+        rating = models.Rating.objects.create(user=user, product=product, value=3)
+
+        self.assertEqual(str(rating), f'{product.name}>{user.name}>{rating.value}')

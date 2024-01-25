@@ -12,6 +12,8 @@ from rest_framework.test import APIClient
 
 from core.models import (
     Product,
+    Product_type,
+    Rating
 )
 
 from product.serializers import (
@@ -83,6 +85,23 @@ class PublicProductAPITests(TestCase):
 
         self.assertEqual(res.status_code, status.HTTP_401_UNAUTHORIZED)
 
+    def test_return_product_rating_succesfull(self):
+        """Test the average rating of a product is returned on detail."""
+        product = Product.objects.create(name='Test Product',
+                                         price=Decimal('300'))
+        user1 = get_user_model().objects.create_user(email='user1@example.com',
+                                                     password='Tetspass123')
+        user2 = get_user_model().objects.create_user(email='user2@example.com',
+                                                     password='Tetspass123')
+        Rating.objects.create(user=user1, product=product, value=2)
+        Rating.objects.create(user=user2, product=product, value=5)
+
+        url = detail_url(product.id)
+        res = self.client.get(url)
+
+        self.assertEqual(res.status_code, status.HTTP_200_OK)
+        self.assertEqual(res.data['rating'], ((5+2)/2))
+
 
 class PrivateProductsAPITests(TestCase):
     """Test authenticathed API requests."""
@@ -147,7 +166,7 @@ class PrivateProductsAPITests(TestCase):
     # ####_STAFF USERS TESTS_#### #
 
     def test_staff_create_product(self):
-        """Test staffcan create product."""
+        """Test staff can create product."""
         payload = {
             'name': 'Test Product',
             'price': Decimal('350'),
@@ -212,3 +231,45 @@ class PrivateProductsAPITests(TestCase):
 
         res = self.staff_client.get(url)
         self.assertEqual(res.status_code, status.HTTP_404_NOT_FOUND)
+
+    def test_create_type_on_update(self):
+        """Test creating a new product type on product update."""
+        product = create_product(name='Product Name')
+
+        payload = {'types': [{'name': 'Bracelet'}]}
+        url = detail_url(product.id)
+        res = self.staff_client.patch(url, payload, format='json')
+
+        types_list = []
+        for types in product.types.all():
+            types_list.append(types.name)
+
+        self.assertEqual(res.status_code, status.HTTP_200_OK)
+        self.assertIn('Bracelet', types_list)
+
+    def test_update_assign_type(self):
+        """Test assigning an existing type when updating a new product."""
+        type_bracelet = Product_type.objects.create(name='Bracelet')
+        product = create_product(name='Test product')
+        product.types.add(type_bracelet)
+
+        type_necklace = Product_type.objects.create(name='Necklace')
+        payload = {"types": [{"name": "Necklace"}]}
+        url = detail_url(product.id)
+        res = self.staff_client.patch(url, payload, format='json')
+
+        self.assertEqual(res.status_code, status.HTTP_200_OK)
+        self.assertIn(type_necklace, product.types.all())
+
+    def test_clear_product_types(self):
+        """Test clearing a product types."""
+        type = Product_type.objects.create(name='Test Type')
+        product = create_product(name='Test Product')
+        product.types.add(type)
+
+        payload = {'types': []}
+        url = detail_url(product.id)
+        res = self.staff_client.patch(url, payload, format='json')
+
+        self.assertEqual(res.status_code, status.HTTP_200_OK)
+        self.assertEqual(product.types.count(), 0)

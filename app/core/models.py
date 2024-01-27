@@ -65,6 +65,7 @@ class Product(models.Model):
     price = models.DecimalField(max_digits=5, decimal_places=2)
     description = models.TextField(blank=True)
     types = models.ManyToManyField('Product_type', blank=True)
+    tgs = models.ManyToManyField('Tag', blank=True)
 
     def __str__(self):
         return self.name
@@ -104,3 +105,11 @@ class Rating(models.Model):
     def __str__(self):
         """Return rating string representation."""
         return f'{self.product.name}>{self.user.name}>{self.value}'
+
+
+class Tag(models.Model):
+    """Tag object in db."""
+    name = models.CharField(max_length=45, blank=False, null=False)
+
+    def __str__(self) -> str:
+        return self.name

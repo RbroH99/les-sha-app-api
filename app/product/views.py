@@ -12,6 +12,7 @@ from core.models import (
     Product,
     Product_type,
     Rating,
+    Tag,
 )
 from product import serializers
 
@@ -56,3 +57,10 @@ class RatingViewSet(mixins.ListModelMixin,
     serializer_class = serializers.RatingSerializer
     queryset = Rating.objects.all()
     permission_classes = [IsAuthenticatedOrReadOnly]
+
+
+class TagViewSet(viewsets.ModelViewSet):
+    """Manage Tags in database."""
+    serializer_class = serializers.TagSerializer
+    queryset = Tag.objects.all()
+    permission_classes = [DenyPostPermission]

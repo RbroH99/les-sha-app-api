@@ -15,6 +15,7 @@ router = DefaultRouter()
 router.register('products', views.ProductViewSet)
 router.register('product_types', views.Product_typeViewSet)
 router.register('ratings', views.RatingViewSet)
+router.register('tags', views.TagViewSet)
 
 app_name = 'product'
 

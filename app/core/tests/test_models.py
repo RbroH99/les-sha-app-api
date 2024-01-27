@@ -80,3 +80,9 @@ class ModelTests(TestCase):
         rating = models.Rating.objects.create(user=user, product=product, value=3)
 
         self.assertEqual(str(rating), f'{product.name}>{user.name}>{rating.value}')
+
+    def test_create_tag(self):
+        """Test creating a tag is successful."""
+        tag = models.Tag.objects.create(name='Playa')
+
+        self.assertEqual(str(tag), 'Playa')

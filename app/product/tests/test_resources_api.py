@@ -75,7 +75,7 @@ class PublicResourceAPITest(TestCase):
             "name": "New Name",
             "price": Decimal('15')
         }
-        res = self.client.put(url,payload, format='json')
+        res = self.client.put(url, payload, format='json')
 
         self.assertEqual(res.status_code, status.HTTP_401_UNAUTHORIZED)
         resource.refresh_from_db()
@@ -97,7 +97,7 @@ class PrivateResourceAPITests(TestCase):
     """Test authenticated API requests."""
 
     def setUp(self):
-        self.client=APIClient()
+        self.client = APIClient()
         self.user = get_user_model().objects.create_user(email='user@example.com',
                                                          password='Testpass123')
         self.client.force_authenticate(self.user)
@@ -108,7 +108,7 @@ class PrivateResourceAPITests(TestCase):
 
     def test_non_staff_create_resource(self):
         """Test non-staff can't create resources."""
-        payload={
+        payload = {
             "name": "Test Name",
             "price": Decimal('15')
         }

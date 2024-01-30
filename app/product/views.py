@@ -66,6 +66,7 @@ class TagViewSet(viewsets.ModelViewSet):
     queryset = Tag.objects.all()
     permission_classes = [DenyPostPermission]
 
+
 class ResourceViewSet(viewsets.ModelViewSet):
     """Manage resources in database."""
     serializer_class = serializers.ResourceSerializer

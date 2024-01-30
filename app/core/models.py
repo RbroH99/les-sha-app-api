@@ -68,7 +68,6 @@ class Product(models.Model):
     tags = models.ManyToManyField('Tag', blank=True)
     resources = models.ManyToManyField('Resource', blank=True)
 
-
     def __str__(self):
         return self.name
 

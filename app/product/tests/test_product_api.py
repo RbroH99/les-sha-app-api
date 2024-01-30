@@ -326,7 +326,9 @@ class PrivateProductsAPITests(TestCase):
         resource2 = Resource.objects.create(name='Playa')
 
         url = detail_url(product.id)
-        res = self.staff_client.patch(url, {"resources": [resource2.id]}, format='json')
+        res = self.staff_client.patch(url,
+                                      {"resources": [resource2.id]},
+                                      format='json')
 
         self.assertEqual(res.status_code, status.HTTP_200_OK)
         product.refresh_from_db()

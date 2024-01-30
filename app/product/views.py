@@ -13,6 +13,7 @@ from core.models import (
     Product_type,
     Rating,
     Tag,
+    Resource,
 )
 from product import serializers
 
@@ -63,4 +64,10 @@ class TagViewSet(viewsets.ModelViewSet):
     """Manage Tags in database."""
     serializer_class = serializers.TagSerializer
     queryset = Tag.objects.all()
+    permission_classes = [DenyPostPermission]
+
+class ResourceViewSet(viewsets.ModelViewSet):
+    """Manage resources in database."""
+    serializer_class = serializers.ResourceSerializer
+    queryset = Resource.objects.all()
     permission_classes = [DenyPostPermission]

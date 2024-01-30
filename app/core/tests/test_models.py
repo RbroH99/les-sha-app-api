@@ -86,3 +86,9 @@ class ModelTests(TestCase):
         tag = models.Tag.objects.create(name='Playa')
 
         self.assertEqual(str(tag), 'Playa')
+
+    def test_create_resource(self):
+        """Test creating a resource is successful."""
+        resource = models.Resource.objects.create(name="Fimo")
+
+        self.assertEqual(str(resource), resource.name)

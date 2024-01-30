@@ -65,7 +65,9 @@ class Product(models.Model):
     price = models.DecimalField(max_digits=5, decimal_places=2)
     description = models.TextField(blank=True)
     types = models.ManyToManyField('Product_type', blank=True)
-    tgs = models.ManyToManyField('Tag', blank=True)
+    tags = models.ManyToManyField('Tag', blank=True)
+    resources = models.ManyToManyField('Resource', blank=True)
+
 
     def __str__(self):
         return self.name
@@ -110,6 +112,16 @@ class Rating(models.Model):
 class Tag(models.Model):
     """Tag object in db."""
     name = models.CharField(max_length=45, blank=False, null=False)
+
+    def __str__(self) -> str:
+        return self.name
+
+
+class Resource(models.Model):
+    """Self resource for products."""
+    name = models.CharField(max_length=255, blank=False, null=False)
+    price = models.DecimalField(max_digits=5, decimal_places=2,
+                                blank=True, null=True)
 
     def __str__(self) -> str:
         return self.name

@@ -121,6 +121,16 @@ class PrivateTagAPITests(TestCase):
         self.assertEqual(res.status_code, status.HTTP_200_OK)
         self.assertEqual(res.data, serializer.data)
 
+    def test_non_staff_delete_tag_error(self):
+        """Test non-staff authenticated users deleting tag results in error."""
+        tag = Tag.objects.create(name='Test Tag')
+
+        url = detail_url(tag.id)
+        res = self.client.delete(url)
+
+        self.assertEqual(res.status_code, status.HTTP_403_FORBIDDEN)
+        self.assertEqual(Tag.objects.all().count(), 1)
+
     # ***_STAFF USERS TESTS_*** #
 
     def staff_create_tag_success(self):

@@ -13,7 +13,9 @@ from rest_framework.test import APIClient
 from core.models import (
     Product,
     Product_type,
-    Rating
+    Rating,
+    Tag,
+    Resource
 )
 
 from product.serializers import (
@@ -273,3 +275,72 @@ class PrivateProductsAPITests(TestCase):
 
         self.assertEqual(res.status_code, status.HTTP_200_OK)
         self.assertEqual(product.types.count(), 0)
+
+    def test_create_tag_on_update(self):
+        """Test creating a new tag on product update."""
+        product = create_product(name='Product Name')
+
+        payload = {"tags": [{"name": "Bracelet"}]}
+        url = detail_url(product.id)
+        res = self.staff_client.patch(url, payload, format='json')
+
+        tags_list = []
+        for tag in product.tags.all():
+            tags_list.append(tag.name)
+
+        self.assertEqual(res.status_code, status.HTTP_200_OK)
+        self.assertIn('Bracelet', tags_list)
+
+    def test_update_assign_tag(self):
+        """Test assigning an existing tag when updating a product."""
+        tag_fimo = Tag.objects.create(name='Fimo')
+        product = create_product(name='Test product')
+        product.tags.add(tag_fimo)
+
+        tag_rose = Tag.objects.create(name='Rose')
+        payload = {"tags": [{"name": "Rose"}]}
+        url = detail_url(product.id)
+        res = self.staff_client.patch(url, payload, format='json')
+
+        self.assertEqual(res.status_code, status.HTTP_200_OK)
+        self.assertIn(tag_rose, product.tags.all())
+
+    def test_clear_product_tags(self):
+        """Test clearing a product tags."""
+        tag = Tag.objects.create(name='Test Tag')
+        product = create_product(name='Test Product')
+        product.tags.add(tag)
+
+        payload = {'tags': []}
+        url = detail_url(product.id)
+        res = self.staff_client.patch(url, payload, format='json')
+
+        self.assertEqual(res.status_code, status.HTTP_200_OK)
+        self.assertEqual(product.tags.count(), 0)
+
+    def test_update_assign_resources(self):
+        """Test updating resources."""
+        product = create_product(name='Test Product')
+        resource1 = Resource.objects.create(name='Set')
+        product.resources.add(resource1)
+        resource2 = Resource.objects.create(name='Playa')
+
+        url = detail_url(product.id)
+        res = self.staff_client.patch(url, {"resources": [resource2.id]}, format='json')
+
+        self.assertEqual(res.status_code, status.HTTP_200_OK)
+        product.refresh_from_db()
+        self.assertIn(resource2, product.resources.all())
+
+    def test_clear_resources(self):
+        """Test clearing resources of a product."""
+        resource1 = Resource.objects.create(name='Set')
+        resource2 = Resource.objects.create(name='Forest')
+        product = create_product(name='Product')
+        product.resources.set([resource1.id, resource2.id])
+
+        url = detail_url(product.id)
+        res = self.staff_client.patch(url, {"resources": []}, format='json')
+
+        self.assertEqual(res.status_code, status.HTTP_200_OK)
+        self.assertEqual(res.data['resources'], [])

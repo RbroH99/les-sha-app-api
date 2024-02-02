@@ -130,7 +130,17 @@ class ProductDetailSerializer(ProductSerializer):
     rating = serializers.SerializerMethodField()
 
     class Meta(ProductSerializer.Meta):
-        fields = ProductSerializer.Meta.fields + ['description', 'rating']
+        fields = ProductSerializer.Meta.fields + ['description', 'rating', 'image']
 
     def get_rating(self, obj):
         return obj.rating
+
+
+class ProductImageSerializer(serializers.ModelSerializer):
+    """Serializer for uploading images to a product."""
+
+    class Meta:
+        model = Product
+        fields = ['id', 'image']
+        read_only_fields = ['id']
+        extra_kwargs = {'image': {'required': 'True'}}

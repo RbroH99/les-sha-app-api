@@ -44,8 +44,23 @@ class ResourceSerializer(serializers.ModelSerializer):
 
     class Meta:
         model = Resource
-        fields = ['id', 'name', 'price']
+        fields = ['id', 'name', 'price', 'image']
         read_only_fields = ['id']
+
+    def update(self, instance, validated_data):
+        """Manage updating resource."""
+        image = validated_data.get('image', 'not_exists')
+        if image is None:
+            validated_data.pop('image')
+            instance.image.delete(save=True)
+            instance.image = None
+
+        for attr, value in validated_data.items():
+            setattr(instance, attr, value)
+
+
+        instance.save()
+        return instance
 
 
 class ProductSerializer(serializers.ModelSerializer):
@@ -118,8 +133,15 @@ class ProductSerializer(serializers.ModelSerializer):
             for resource in resources:
                 instance.resources.add(resource)
 
+        image = validated_data.get('image', 'not_exists')
+        if image is None:
+            validated_data.pop('image')
+            instance.image.delete(save=True)
+            instance.image = None
+
         for attr, value in validated_data.items():
             setattr(instance, attr, value)
+
 
         instance.save()
         return instance
@@ -144,3 +166,14 @@ class ProductImageSerializer(serializers.ModelSerializer):
         fields = ['id', 'image']
         read_only_fields = ['id']
         extra_kwargs = {'image': {'required': 'True'}}
+
+
+class ResourceImageSerializer(serializers.ModelSerializer):
+    """Serializer for uploading images to a resource."""
+
+    class Meta:
+        model = Resource
+        fields = ['id', 'image']
+        read_only_fields = ['id']
+        extra_kwargs = {'image': {'required': 'True'}}
+

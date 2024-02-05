@@ -19,12 +19,12 @@ from django.core.validators import (
 from phonenumber_field.modelfields import PhoneNumberField
 
 
-def product_image_file_path(instance, filename):
+def image_file_path(instance, filename):
     """Generate file path for new product image."""
     ext = os.path.splitext(filename)[1]
     filename = f'{uuid.uuid4()}{ext}'
 
-    return os.path.join('uploads', 'product', filename)
+    return os.path.join('uploads', instance.__class__.__name__.lower(), filename)
 
 
 class UserManager(BaseUserManager):
@@ -78,7 +78,7 @@ class Product(models.Model):
     types = models.ManyToManyField('Product_type', blank=True)
     tags = models.ManyToManyField('Tag', blank=True)
     resources = models.ManyToManyField('Resource', blank=True)
-    image = models.ImageField(null=True, upload_to=product_image_file_path)
+    image = models.ImageField(null=True, upload_to=image_file_path)
 
     def __str__(self):
         return self.name
@@ -87,6 +87,15 @@ class Product(models.Model):
     def rating(self):
         """Calculate average of product rating."""
         return self.rating_set.aggregate(models.Avg('value'))['value__avg']
+
+    def delete(self, *args, **kwargs):
+        """Delete product and its image from database."""
+
+        if self.image:
+            if os.path.isfile(self.image.path):
+                os.remove(self.image.path)
+
+        super().delete(*args, **kwargs)
 
 
 class Product_type(models.Model):
@@ -133,6 +142,16 @@ class Resource(models.Model):
     name = models.CharField(max_length=255, blank=False, null=False)
     price = models.DecimalField(max_digits=5, decimal_places=2,
                                 blank=True, null=True)
+    image = models.ImageField(null=True, upload_to=image_file_path)
+
+    def delete(self, *args, **kwargs):
+        """Delete resource and its image from database."""
+
+        if self.image:
+            if os.path.isfile(self.image.path):
+                os.remove(self.image.path)
+
+        super().delete(*args, **kwargs)
 
     def __str__(self) -> str:
         return self.name

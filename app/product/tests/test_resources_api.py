@@ -13,6 +13,10 @@ from core.models import Resource
 from product.serializers import ResourceSerializer
 
 from decimal import Decimal
+import tempfile
+import os
+
+from PIL import Image
 
 
 RESOURCES_URL = reverse('product:resource-list')
@@ -21,6 +25,11 @@ RESOURCES_URL = reverse('product:resource-list')
 def detail_url(resource_id):
     """Return detail url of a resource."""
     return reverse('product:resource-detail', args=[resource_id])
+
+
+def image_upload_url(resource_id):
+    """Create and return an image upload url."""
+    return reverse('product:resource-upload-image', args=[resource_id])
 
 
 def create_user(email='user@exampel.com', password='testpass123'):
@@ -188,3 +197,74 @@ class PrivateResourceAPITests(TestCase):
 
         self.assertEqual(res.status_code, status.HTTP_204_NO_CONTENT)
         self.assertEqual(Resource.objects.all().count(), 0)
+
+
+class ImageUploadTests(TestCase):
+    """Test for the image upload API."""
+
+    def generate_image_post_response(self, product_id, client):
+        """Generate image, post it to a product and return response."""
+        url = image_upload_url(product_id)
+        with tempfile.NamedTemporaryFile(suffix='.jpg') as image_file:
+            img = Image.new('RGB', (10, 10))
+            img.save(image_file, format='JPEG')
+            image_file.seek(0)
+            payload = {"image": image_file}
+            res = client.post(url, payload, format='multipart')
+
+        return res
+
+    def setUp(self):
+        self.client = APIClient()
+        self.user = get_user_model().objects.create_user(
+            'user@example.com',
+            'testpass123'
+        )
+        self.client.force_authenticate(self.user)
+        self.resource = Resource.objects.create(name='Test Product')
+        self.superuser, self.staff_client = \
+            create_staff_client(email='superuser1@example.com')
+
+    def tearDown(self):
+        self.resource.image.delete()
+
+    def test_upload_image(self):
+        """Test uploading an image to a resource."""
+        res = self.generate_image_post_response(self.resource.id, self.staff_client)
+
+        self.resource.refresh_from_db()
+        self.assertEqual(res.status_code, status.HTTP_200_OK)
+        self.assertIn('image', res.data)
+        self.assertTrue(os.path.exists(self.resource.image.path))
+
+    def test_upload_image_bad_request(self):
+        """Test uploading invalid image."""
+        url = image_upload_url(self.resource.id)
+        payload = {"image": "notanimage"}
+        res = self.staff_client.post(url, payload, format='multipart')
+
+        self.assertEqual(res.status_code, status.HTTP_400_BAD_REQUEST)
+
+    def test_deleting_image_on_update(self):
+        """Test deleting an image when erased from resource field."""
+        self.generate_image_post_response(self.resource.id, self.staff_client)
+        self.resource.refresh_from_db()
+        image_path = self.resource.image.path
+        url = detail_url(self.resource.id)
+        payload = {"image": None}
+        res = self.staff_client.patch(url, payload, format='json')
+
+        self.assertEqual(res.status_code, status.HTTP_200_OK)
+        self.resource.refresh_from_db()
+        self.assertFalse(os.path.exists(image_path))
+
+    def test_deleting_image_on_delete(self):
+        """Test deleting a image on resource delete."""
+        self.generate_image_post_response(self.resource.id, self.staff_client)
+        self.resource.refresh_from_db()
+        image_path = self.resource.image.path
+        url = detail_url(self.resource.id)
+        res = self.staff_client.delete(url)
+
+        self.assertEqual(res.status_code, status.HTTP_204_NO_CONTENT)
+        self.assertFalse(os.path.exists(image_path))

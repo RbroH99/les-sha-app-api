@@ -88,3 +88,22 @@ class ResourceViewSet(viewsets.ModelViewSet):
     serializer_class = serializers.ResourceSerializer
     queryset = Resource.objects.all()
     permission_classes = [DenyPostPermission]
+
+    def get_serializer_class(self):
+        """Return the serializer class for request."""
+        if self.action == 'upload_image':
+            return serializers.ResourceImageSerializer
+
+        return self.serializer_class
+
+    @action(methods=['POST'], detail=True, url_path='upload-image')
+    def upload_image(self, request, pk=None):
+        """Upload image to recipe."""
+        resource = self.get_object()
+        serializer = self.get_serializer(resource, data=request.data)
+
+        if serializer.is_valid():
+            serializer.save()
+            return Response(serializer.data, status=status.HTTP_200_OK)
+
+        return Response(serializer.errors, status=status.HTTP_400_BAD_REQUEST)

@@ -360,6 +360,18 @@ class PrivateProductsAPITests(TestCase):
 class ImageUploadTests(TestCase):
     """Tests for the image upload API."""
 
+    def generate_image_post_response(self, product_id, client):
+        """Generate image, post it to a product and return response."""
+        url = image_upload_url(product_id)
+        with tempfile.NamedTemporaryFile(suffix='.jpg') as image_file:
+            img = Image.new('RGB', (10, 10))
+            img.save(image_file, format='JPEG')
+            image_file.seek(0)
+            payload = {"image": image_file}
+            res = client.post(url, payload, format='multipart')
+
+        return res
+
     def setUp(self):
         self.client = APIClient()
         self.user = get_user_model().objects.create_user(
@@ -376,13 +388,7 @@ class ImageUploadTests(TestCase):
 
     def test_upload_image(self):
         """Test uploading an image to a product."""
-        url = image_upload_url(self.product.id)
-        with tempfile.NamedTemporaryFile(suffix='.jpg') as image_file:
-            img = Image.new('RGB', (10, 10))
-            img.save(image_file, format='JPEG')
-            image_file.seek(0)
-            payload = {"image": image_file}
-            res = self.staff_client.post(url, payload, format='multipart')
+        res = self.generate_image_post_response(self.product.id, self.staff_client)
 
         self.product.refresh_from_db()
         self.assertEqual(res.status_code, status.HTTP_200_OK)
@@ -396,3 +402,29 @@ class ImageUploadTests(TestCase):
         res = self.staff_client.post(url, payload, format='multipart')
 
         self.assertEqual(res.status_code, status.HTTP_400_BAD_REQUEST)
+
+    def test_deleting_image_on_update(self):
+        """Test deleting an image when erased from product field."""
+        self.generate_image_post_response(self.product.id, self.staff_client)
+        self.product.refresh_from_db()
+        image_path = self.product.image.path
+        url = detail_url(self.product.id)
+        payload = {"image": None}
+        res = self.staff_client.patch(url, payload, format='json')
+
+        self.assertEqual(res.status_code, status.HTTP_200_OK)
+        self.product.refresh_from_db()
+        self.assertFalse(os.path.exists(image_path))
+
+    def test_deleting_image_on_delete(self):
+        """Test deleting a image on product delete."""
+        self.generate_image_post_response(self.product.id, self.staff_client)
+        self.product.refresh_from_db()
+        image_path = self.product.image.path
+        url = detail_url(self.product.id)
+        res = self.staff_client.delete(url)
+
+        self.assertEqual(res.status_code, status.HTTP_204_NO_CONTENT)
+        self.assertFalse(os.path.exists(image_path))
+
+

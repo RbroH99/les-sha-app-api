@@ -99,6 +99,13 @@ class ModelTests(TestCase):
         """Test generting image path."""
         uuid = 'test-uuid'
         mock_uuid.return_value = uuid
-        file_path = models.product_image_file_path(None, 'example.jpg')
 
-        self.assertEqual(file_path, f'uploads/product/{uuid}.jpg')
+        product = models.Product.objects.create(name='Test Name',
+                                                price='250')
+        resource = models.Resource.objects.create(name='Resource')
+
+        product_file_path = models.image_file_path(product, 'example.jpg')
+        resource_file_path = models.image_file_path(resource, 'example.jpg')
+
+        self.assertEqual(product_file_path, f'uploads/product/{uuid}.jpg')
+        self.assertEqual(resource_file_path, f'uploads/resource/{uuid}.jpg')
